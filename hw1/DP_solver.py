@@ -287,6 +287,7 @@ class AsyncDynamicProgramming(DynamicProgramming):
         # TODO: Implement the async dynamic programming algorithm until convergence
         # self.run_inplace_value_iter()
         self.run_prioritized_sweeping()
+        # self.run_novel_method()
 
     """method 1"""
     def run_inplace_value_iter(self):
@@ -333,17 +334,18 @@ class AsyncDynamicProgramming(DynamicProgramming):
     """method 2 & 3"""
     def run_prioritized_sweeping(self):
         """run q-learning episode"""
-        delta = 0
+        deltas = np.ones(self.state_space) * 100
 
         while (True):
             for s in range(self.state_space):
                 self.pq = np.zeros(self.state_space * self.action_space)
-                d = self.run_MDP_episode(start_state=s)
-                delta = max(delta, d)
-            
-            if (delta < self.threshold):
-                break
 
+                if (deltas[s] >= self.threshold):
+                    deltas[s] = self.run_MDP_episode(start_state=s)
+            
+            if (np.sum(deltas < self.threshold) == len(deltas)):
+                break
+            
         self.policy = self.policy_improvement()
 
     
@@ -351,7 +353,6 @@ class AsyncDynamicProgramming(DynamicProgramming):
         """run my novel method"""
         delta = 0
 
-        # for s in range(self.state_space):
         while (True):
             self.pq = np.zeros(self.state_space * self.action_space)
 
