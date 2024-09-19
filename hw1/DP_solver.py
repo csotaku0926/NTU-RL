@@ -262,9 +262,9 @@ class AsyncDynamicProgramming(DynamicProgramming):
     def __init__(self, grid_world: GridWorld, discount_factor: float = 1.0):
         """Constructor for ValueIteration
 
-        - in-place value iteration (dynamic programming)
-        - prioritized sweeping
-        - real-time value iteration (dynamic programming)
+        - in-place value iteration (dynamic programming) -- 1056 steps
+        - prioritized sweeping -- 460 steps
+        - my novel method -- 364 steps
 
         Args:
             grid_world (GridWorld): GridWorld object
@@ -285,9 +285,9 @@ class AsyncDynamicProgramming(DynamicProgramming):
     def run(self) -> None:
         """Run the algorithm until convergence"""
         # TODO: Implement the async dynamic programming algorithm until convergence
+        self.run_novel_method()
         # self.run_inplace_value_iter()
-        self.run_prioritized_sweeping()
-        # self.run_novel_method()
+        # self.run_prioritized_sweeping()
 
     """method 1"""
     def run_inplace_value_iter(self):
