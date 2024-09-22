@@ -129,7 +129,7 @@ def run_async_dynamic_programming(grid_world: GridWorld):
 
 
 if __name__ == "__main__":
-    grid_world = init_grid_world()
+    grid_world = init_grid_world(maze_file="maze.txt")
     run_policy_evaluation(grid_world)
     run_policy_iteration(grid_world)
     run_value_iteration(grid_world)
