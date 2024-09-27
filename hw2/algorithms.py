@@ -71,14 +71,19 @@ class MonteCarloPrediction(ModelFreePrediction):
         """Run the algorithm until max_episode"""
         # TODO: Update self.values with first-visit Monte-Carlo method
         current_state = self.grid_world.reset()
+        G = 0
         while self.episode_counter < self.max_episode:
             next_state, reward, done = self.collect_data()
-            continue
+            G = self.discount_factor * G + reward
+            if (not done):
+                continue
+            # done one episode
+            # M_{k+1} = (k * M_k + a_{k+1}) / (k + 1)
 
 
 class TDPrediction(ModelFreePrediction):
     def __init__(
-            self, grid_world: GridWorld,learning_rate: float, policy: np.ndarray = None, discount_factor: float = 1.0, max_episode: int = 300, seed: int = 1):
+            self, grid_world: GridWorld, learning_rate: float, policy: np.ndarray = None, discount_factor: float = 1.0, max_episode: int = 300, seed: int = 1):
         """Constructor for Temporal Difference(0) Prediction
 
         Args:
