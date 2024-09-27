@@ -281,6 +281,7 @@ class AsyncDynamicProgramming(DynamicProgramming):
         self.model = dict()
         # self.pq = PriorityQueue()
         self.pq = np.zeros(self.state_space * self.action_space)
+        self.is_converge = np.array([False] * self.state_space)
 
     def run(self) -> None:
         """Run the algorithm until convergence"""
@@ -351,15 +352,18 @@ class AsyncDynamicProgramming(DynamicProgramming):
     
     def run_novel_method(self):
         """run my novel method"""
-        delta = 0
+        for s in range(self.state_space):
+            if (self.is_converge[s]):
+                continue
+            while (True):
+                self.pq = np.zeros(self.state_space * self.action_space)
+                delta, past_states = self.run_MDP_episode(start_state=s)
+                if (delta < self.threshold):
+                    # assume the states on optimal path are all converged
+                    for s_ in past_states:
+                        self.is_converge[s_] = True
+                    break
 
-        while (True):
-            self.pq = np.zeros(self.state_space * self.action_space)
-
-            delta = self.run_MDP_episode()
-            
-            if (delta < self.threshold):
-                break
 
         self.policy = self.policy_improvement()
 
@@ -401,7 +405,7 @@ class AsyncDynamicProgramming(DynamicProgramming):
         delta = 0
 
         # update reward
-        self.model[(state, action)] = (reward, next_state)
+        self.model[(state, action)] = (reward, next_state, done)
         # update predecessors
         self.update_predecessors(state, action, next_state)
         
@@ -431,8 +435,8 @@ class AsyncDynamicProgramming(DynamicProgramming):
             if (_state not in self.predecessors):
                 continue
             for s, a in self.predecessors[_state]:
-                r, _ = self.model[(s, a)]
-                _prirority = r + self.discount_factor * self.compute_value(_state) - self.q_values[s, a]
+                r, _, _done = self.model[(s, a)]
+                _prirority = r + self.discount_factor * self.compute_value(_state) * (1-_done) - self.q_values[s, a]
                 if (abs(_prirority) > self.threshold):
                     self.set_pq_by_idx(s, a, _prirority)
         
@@ -442,17 +446,19 @@ class AsyncDynamicProgramming(DynamicProgramming):
         state = start_state
         done = False
         delta = 0
+        past_states = set()
 
         while (not done):
             action = self.get_best_action(state)
             next_state, reward, done = self.grid_world.step(state, action)
             d = self.update_ps(state, action, reward, next_state, done)
             delta = max(delta, d)
+            past_states.add(state)
             state = next_state
         
         for s in range(self.state_space):
             self.values[s] = self.compute_value(s)
 
-        return delta
+        return delta, past_states
 
     
