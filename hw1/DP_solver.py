@@ -352,16 +352,6 @@ class AsyncDynamicProgramming(DynamicProgramming):
     
     def run_novel_method(self):
         """run my novel method"""
-        # delta = 0
-
-        # while (True):
-        #     self.pq = np.zeros(self.state_space * self.action_space)
-
-        #     delta = self.run_MDP_episode()
-            
-        #     if (delta < self.threshold):
-        #         break
-
         for s in range(self.state_space):
             if (self.is_converge[s]):
                 continue
