@@ -46,14 +46,14 @@ def red(s):
     return "\033[91m" + str(s) + "\033[0m"
 
 
-def init_grid_world(maze_file: str = "maze.txt"):
+def init_grid_world(maze_file: str = "maze.txt", init_pos: list = None):
     print(bold(underline("Grid World")))
     grid_world = GridWorld(
         maze_file,
         step_reward=STEP_REWARD,
         goal_reward=GOAL_REWARD,
         trap_reward=TRAP_REWARD,
-        init_pos=INIT_POS,
+        init_pos=init_pos,
     )
     grid_world.print_maze()
     grid_world.visualize(title="Maze", filename="maze.png", show=False)
@@ -210,13 +210,14 @@ def run_Q_Learning(grid_world: GridWorld, iter_num: int):
 
 if __name__ == "__main__":
     seed = 1
-    grid_world = init_grid_world("maze.txt")
+    grid_world = init_grid_world("maze.txt",INIT_POS)
     # 2-1
     run_MC_prediction(grid_world,seed)
     run_TD_prediction(grid_world,seed)
     run_NstepTD_prediction(grid_world,seed)
 
-    # # 2-2
-    run_MC_policy_iteration(grid_world, 512000)
-    run_SARSA(grid_world, 512000)
+    # 2-2
+    grid_world = init_grid_world("maze.txt")
+    # run_MC_policy_iteration(grid_world, 512000)
+    # run_SARSA(grid_world, 512000)
     run_Q_Learning(grid_world, 50000)

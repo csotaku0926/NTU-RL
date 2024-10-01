@@ -202,7 +202,10 @@ class GridWorld:
 
     def reset(self) -> int:
         """Reset the current step"""
-        self.__current_state = self.__init_pos_list[np.random.randint(len(self.__init_pos_list))]
+        if self.__init_pos_list:
+            self.__current_state = self.__init_pos_list[np.random.randint(len(self.__init_pos_list))]
+        else:
+            self.__current_state = np.random.randint(len(self.__state_list))
         return self.__current_state
 
     def reset_step_count(self):
