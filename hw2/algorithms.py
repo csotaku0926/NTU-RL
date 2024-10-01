@@ -422,7 +422,7 @@ class Q_Learning(ModelFreeControl):
         # self.buffer = tmp
 
         # .. or discard everything
-        self.buffer.clear()
+        # self.buffer.clear()
         
         return random_samples
 
@@ -434,6 +434,11 @@ class Q_Learning(ModelFreeControl):
 
         self.q_values[s, a] += self.lr * \
             (r + self.discount_factor * q2 * (1 - is_done) - self.q_values[s, a])
+        
+        # epsilon-greedy policy improvement (only affect (s, a))
+        self.policy[s] = np.ones(self.action_space) * self.epsilon / self.action_space
+        argmax_a = np.argmax(self.q_values[s])
+        self.policy[s, argmax_a] += (1 - self.epsilon)
 
     def run(self, max_episode=1000) -> None:
         """Run the algorithm until convergence."""
@@ -469,8 +474,6 @@ class Q_Learning(ModelFreeControl):
             # restart
             iter_episode += 1
             is_done = False
-            self.transition_count = 0
-            self.buffer.clear()
 
             if (iter_episode % 1000 == 0):
                 print(iter_episode)
