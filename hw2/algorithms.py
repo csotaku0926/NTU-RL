@@ -404,12 +404,12 @@ class Q_Learning(ModelFreeControl):
 
     def add_buffer(self, s, a, r, s2, d) -> None:
         # TODO: add new transition to buffer
-        self.buffer.append(np.array([s, a, r, s2, d], dtype=np.int64))
+        self.buffer.append((s, a, r, s2, d))
 
     def sample_batch(self) -> np.ndarray:
         # TODO: sample a batch of index of transitions from the buffer
         random_indices = self.rng.choice(len(self.buffer), self.sample_batch_size)
-        random_samples = np.array([self.buffer[idx] for idx in random_indices])
+        random_samples = [self.buffer[idx] for idx in random_indices]
         
         # only remove sampled data from buffer
         # tmp = deque()
