@@ -411,18 +411,7 @@ class Q_Learning(ModelFreeControl):
         random_indices = self.rng.choice(len(self.buffer), self.sample_batch_size)
         random_samples = [self.buffer[idx] for idx in random_indices]
         
-        # only remove sampled data from buffer
-        # tmp = deque()
-        # keep_indices = [True] * len(self.buffer)
-        # for idx in random_indices:
-        #     keep_indices[idx] = False
-        # for i, k_idx in enumerate(keep_indices):
-        #     if (k_idx):
-        #         tmp.append(self.buffer[i])
-        # self.buffer = tmp
-
-        # .. or discard everything
-        # self.buffer.clear()
+        # keep the selected items in replay buffer
         
         return random_samples
 
@@ -474,6 +463,3 @@ class Q_Learning(ModelFreeControl):
             # restart
             iter_episode += 1
             is_done = False
-
-            if (iter_episode % 1000 == 0):
-                print(iter_episode)
