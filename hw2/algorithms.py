@@ -209,6 +209,14 @@ class ModelFreeControl:
         self.seed = 1
         self.rng = np.random.default_rng(self.seed)
 
+        # only for logging rewards
+        self._log_reward = 0
+        self._log_rewards = []
+        self._log_loss = 0
+        self._log_losses = []
+        self._do_log_ctr = 0
+        self._do_log = False
+
 
     def collect_data(self):
         current_state = self.grid_world.get_current_state()
@@ -256,20 +264,29 @@ class MonteCarloPolicyIteration(ModelFreeControl):
     def policy_evaluation(self, state_trace, action_trace, reward_trace) -> None:
         """Evaluate the policy and update the values after one episode"""
         # TODO: Evaluate state value for each Q(s,a)
-        
         T = len(reward_trace)
         Gs = np.zeros(T)
         G = 0
+        _tmp_reward = 0
+
         for i in range(T):
             j = T-1-i
             r_t = reward_trace[j]
             G = self.discount_factor * G + r_t
             Gs[j] = G
-        
+            _tmp_reward += r_t
+            
+        _loss = 0
         for i in range(T):
             s_t = state_trace[i]
             a_t = action_trace[i]
-            self.q_values[s_t, a_t] += self.lr * (Gs[i] - self.q_values[s_t, a_t])        
+            _loss += abs(Gs[i] - self.q_values[s_t, a_t])
+            self.q_values[s_t, a_t] += self.lr * (Gs[i] - self.q_values[s_t, a_t])    
+
+        # average non-discounted reward
+        if (self._do_log): 
+            self._log_reward += (_tmp_reward / T)
+            self._log_loss += (_loss / T)
 
     def policy_improvement(self) -> None:
         """Improve policy based on Q(s,a) after one episode"""
@@ -285,7 +302,7 @@ class MonteCarloPolicyIteration(ModelFreeControl):
             self.policy[s][_a] += (1 - self.epsilon)
 
 
-    def run(self, max_episode=1000) -> None:
+    def run(self, max_episode=1000, log_per_episode=None, log_num=10) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the Monte Carlo policy evaluation with epsilon-greedy
         iter_episode = 0
@@ -293,6 +310,12 @@ class MonteCarloPolicyIteration(ModelFreeControl):
         state_trace   = [current_state]
         action_trace  = []
         reward_trace  = []
+
+        self._log_loss = 0
+        self._log_reward = 0
+        self._log_rewards = []
+        self._log_losses = []
+        self._do_log_ctr = log_per_episode - log_num
 
         while iter_episode < max_episode:
             # TODO: write your code here
@@ -308,8 +331,17 @@ class MonteCarloPolicyIteration(ModelFreeControl):
 
             iter_episode += 1
 
+            self._do_log = (iter_episode > self._do_log_ctr)
             self.policy_evaluation(state_trace, action_trace, reward_trace)
             self.policy_improvement()
+
+            # log rewards every `log_per_episode`, average of `log_num` items
+            if (log_per_episode and iter_episode % log_per_episode == 0):
+                self._log_rewards.append(self._log_reward / log_num)
+                self._log_reward = 0
+                self._log_losses.append(self._log_loss / log_num)
+                self._log_loss = 0
+                self._do_log_ctr += log_per_episode
 
             # clear traces
             current_state = self.grid_world.get_current_state()
@@ -332,8 +364,16 @@ class SARSA(ModelFreeControl):
         self.lr      = learning_rate
         self.epsilon = epsilon
 
+        self._tmp_loss = 0
+        self._tmp_reward = 0
+
     def policy_eval_improve(self, s, a, r, s2, a2, is_done) -> None:
         """Evaluate the policy and update the values after one step"""
+        # log reward
+        if (self._do_log):
+            self._tmp_reward += r
+            self._tmp_loss += abs(r + self.discount_factor * self.q_values[s2, a2] * (1 - is_done) - self.q_values[s, a])
+            
         # TODO: Evaluate Q value after one step and improve the policy
         self.q_values[s, a] += self.lr * \
             (r + self.discount_factor * self.q_values[s2, a2] * (1 - is_done) - self.q_values[s, a])
@@ -344,7 +384,7 @@ class SARSA(ModelFreeControl):
         self.policy[s, argmax_a] += (1 - self.epsilon)
 
 
-    def run(self, max_episode=1000) -> None:
+    def run(self, max_episode=1000, log_per_episode=None, log_num=10) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the TD policy evaluation with epsilon-greedy
         iter_episode = 0
@@ -353,6 +393,15 @@ class SARSA(ModelFreeControl):
         prev_a = None
         prev_r = None
         is_done = False
+
+        self._tmp_loss = 0
+        self._tmp_reward = 0
+        self._log_loss = 0
+        self._log_reward = 0
+        self._log_rewards = []
+        self._log_losses = []
+        self._do_log = False
+        self._do_log_ctr = log_per_episode - log_num
 
         while iter_episode < max_episode:
             # TODO: write your code here
@@ -363,6 +412,7 @@ class SARSA(ModelFreeControl):
             current_action = self.rng.choice(self.action_space, p=policy)
 
             # start an episode
+            n_step = 0
             while (not is_done):
                 # Take action A, observe R, S'
                 next_state, prev_r, is_done = self.grid_world.step(current_action)
@@ -378,9 +428,24 @@ class SARSA(ModelFreeControl):
 
                 self.policy_eval_improve(prev_s, prev_a, prev_r, current_state, current_action, is_done)
                 
+                n_step += 1
+
             # restart
             iter_episode += 1
             is_done = False
+            self._log_loss += self._tmp_loss / n_step
+            self._log_reward += self._tmp_reward / n_step
+            self._tmp_loss = 0
+            self._tmp_reward = 0
+            self._do_log = (iter_episode > self._do_log_ctr)
+
+            # log reward
+            if (log_per_episode and iter_episode % log_per_episode == 0):
+                self._log_rewards.append(self._log_reward / log_num)
+                self._log_reward = 0
+                self._log_losses.append(self._log_loss / log_num)
+                self._log_loss = 0
+                self._do_log_ctr += log_per_episode
 
 
 class Q_Learning(ModelFreeControl):
@@ -401,6 +466,9 @@ class Q_Learning(ModelFreeControl):
         self.update_frequency  = update_frequency
         self.sample_batch_size = sample_batch_size
         self.transition_count  = 0
+
+        self._tmp_loss = 0
+        self._tmp_reward = 0
 
     def add_buffer(self, s, a, r, s2, d) -> None:
         # TODO: add new transition to buffer
@@ -429,7 +497,7 @@ class Q_Learning(ModelFreeControl):
         argmax_a = np.argmax(self.q_values[s])
         self.policy[s, argmax_a] += (1 - self.epsilon)
 
-    def run(self, max_episode=1000) -> None:
+    def run(self, max_episode=1000, log_per_episode=None, log_num=10) -> None:
         """Run the algorithm until convergence."""
         # TODO: Implement the Q_Learning algorithm
         iter_episode = 0
@@ -440,17 +508,30 @@ class Q_Learning(ModelFreeControl):
         is_done = False
         self.transition_count = 0
 
+        self._tmp_loss = 0
+        self._tmp_reward = 0
+        self._do_log_ctr = log_per_episode - log_num
+
         while iter_episode < max_episode:
             # TODO: write your code here
             # hint: self.grid_world.reset() is NOT needed here
 
+            n_step = 0
             while (not is_done):
                 prev_s = current_state
                 current_state, prev_a, prev_r, is_done = self.collect_data()
+                
+                # log reward
+                if (iter_episode > self._do_log_ctr):
+                    self._tmp_reward += prev_r
+                    q2 = np.max(self.q_values[current_state])
+                    self._tmp_loss += \
+                        abs(prev_r + self.discount_factor * q2 * (1 - is_done) - self.q_values[prev_s, prev_a])
 
                 # store transition
                 self.add_buffer(prev_s, prev_a, prev_r, current_state, is_done)
                 self.transition_count += 1
+                n_step += 1
 
                 # sample batch
                 if (self.transition_count == self.update_frequency):
@@ -463,3 +544,16 @@ class Q_Learning(ModelFreeControl):
             # restart
             iter_episode += 1
             is_done = False
+
+            # log reward
+            self._log_reward += self._tmp_reward / n_step
+            self._log_loss += self._tmp_loss / n_step
+            self._tmp_loss = 0
+            self._tmp_reward = 0
+
+            if (log_per_episode and iter_episode % log_per_episode == 0):
+                self._log_rewards.append(self._log_reward / log_num)
+                self._log_reward = 0
+                self._log_losses.append(self._log_loss / log_num)
+                self._log_loss = 0
+                self._do_log_ctr += log_per_episode
