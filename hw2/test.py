@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import wandb
 import csv
-import os # DO NOT SUBMIT THIS FILE
+import os
+
+import wandb.plot # DO NOT SUBMIT THIS FILE
 
 from gridworld import GridWorld
 from algorithms import (
@@ -106,21 +108,42 @@ def _plot_mc_td_wandb(mc_var, mc_bias, td_var, td_bias):
     x_axis = np.arange(len(mc_var))
     wandb.init()
 
-    data = [[x, var, var2] for (x, var, var2) in zip(x_axis, mc_var, td_var)]
-    table = wandb.Table(
-        data=data,
-        columns=["x", "MC varaince", "TD variance"]
-    )
+    metrics = ["variance", "bias"]
+    for m in metrics:
+        wandb.define_metric(m)
+    
+    for i in range(len(mc_var)):
+        log_dict = {
+            "variance": mc_var[i],
+            "bias": mc_bias[i],
+        }
+        wandb.log(log_dict)
+    wandb.finish()
 
-    data2 = [[x, var, var2] for (x, var, var2) in zip(x_axis, mc_bias, td_bias)]
-    table2 = wandb.Table(
-        data=data2,
-        columns=["x", "MC bias", "TD bias"]
-    )
-    wandb.log({
-        "varaince table": table,
-        "bias table": table2
-    })
+    wandb.init()
+    for i in range(len(td_var)):
+        log_dict = {
+            "variance": td_var[i],
+            "bias": td_bias[i],
+        }
+        wandb.log(log_dict)
+    wandb.finish()
+
+    # data = [[x, var, var2] for (x, var, var2) in zip(x_axis, mc_var, td_var)]
+    # table = wandb.Table(
+    #     data=data,
+    #     columns=["x", "MC varaince", "TD variance"]
+    # )
+
+    # data2 = [[x, var, var2] for (x, var, var2) in zip(x_axis, mc_bias, td_bias)]
+    # table2 = wandb.Table(
+    #     data=data2,
+    #     columns=["x", "MC bias", "TD bias"]
+    # )
+    # wandb.log({
+    #     "varaince table": table,
+    #     "bias table": table2
+    # })
 
 
 def task1():        
@@ -238,38 +261,47 @@ def plot_controls_wandb(mc_losses, mc_rewards, sarsa_losses, sarsa_rewards, q_lo
         f"reward table {epsilon}": table2
     })
 
-# to smooth the plot
-def moving_average(a, n=3):
-    ret = np.cumsum(a, dtype=float)
-    ret[n:] = ret[n:] - ret[:-n]
-    return ret[n-1:] / n
 
 def task2():
-    grid_world = init_grid_world("maze.txt", INIT_POS)
+    # grid_world = init_grid_world("maze.txt", INIT_POS)
     
-    for epsilon in [0.1, 0.2, 0.3, 0.4]:
-        print(f"\n----- epsilon = {epsilon} ------\n")
-        mc_losses, mc_rewards = _run_MC_policy_iteration(grid_world, MAX_STEP, epsilon)
-        sarsa_losses, sarsa_rewards = _run_SARSA(grid_world, MAX_STEP, epsilon)
-        q_losses, q_rewards = _run_Q_Learning(grid_world, MAX_STEP, epsilon)
+    # for epsilon in [0.1, 0.2, 0.3, 0.4]:
+    #     print(f"\n----- epsilon = {epsilon} ------\n")
+    #     mc_losses, mc_rewards = _run_MC_policy_iteration(grid_world, MAX_STEP, epsilon)
+    #     sarsa_losses, sarsa_rewards = _run_SARSA(grid_world, MAX_STEP, epsilon)
+    #     q_losses, q_rewards = _run_Q_Learning(grid_world, MAX_STEP, epsilon)
 
-        # mc_losses = moving_average(mc_losses)
-        # mc_rewards = moving_average(mc_rewards)
-        # sarsa_losses = moving_average(sarsa_losses)
-        # sarsa_rewards = moving_average(sarsa_rewards)
-        # q_losses = moving_average(q_losses)
-        # q_rewards = moving_average(q_rewards)
+    #     # mc_losses = moving_average(mc_losses)
+    #     # mc_rewards = moving_average(mc_rewards)
+    #     # sarsa_losses = moving_average(sarsa_losses)
+    #     # sarsa_rewards = moving_average(sarsa_rewards)
+    #     # q_losses = moving_average(q_losses)
+    #     # q_rewards = moving_average(q_rewards)
 
-        plot_controls_wandb(mc_losses, mc_rewards, 
-                      sarsa_losses, sarsa_rewards,
-                      q_losses, q_rewards, epsilon)
+    #     plot_controls_wandb(mc_losses, mc_rewards, 
+    #                   sarsa_losses, sarsa_rewards,
+    #                   q_losses, q_rewards, epsilon)
+        
+    mc_arg_dict = {}
+    sarsa_arg_dict = {}
+    q_arg_dict = {}
+
+    for csv_filename in os.listdir("log_csv"):
+        m, s, q = read_data(os.path.join("log_csv", csv_filename))
+        _key = csv_filename[:-4]
+        mc_arg_dict[_key] = m
+        sarsa_arg_dict[_key] = s
+        q_arg_dict[_key] = q
+
+    _plot_metrics(mc_arg_dict, len(m))
+    _plot_metrics(sarsa_arg_dict, len(m))
+    _plot_metrics(q_arg_dict, len(m))
 
 def read_data(filename: str, n=3, log_name="table"):
     mc_data = []
     sarsa_data = []
     q_data = []
 
-    wandb.init()
     with open(filename, newline='') as csvfile:
         rows = csv.reader(csvfile)
         rows = list(rows)
@@ -280,22 +312,26 @@ def read_data(filename: str, n=3, log_name="table"):
             sarsa_data.append(float(datas[2]))
             q_data.append(float(datas[3]))
 
-    mc_data = moving_average(mc_data, n)
-    sarsa_data = moving_average(sarsa_data, n)
-    q_data = moving_average(q_data, n)
+    return mc_data, sarsa_data, q_data
 
-    data = [[x, v, v2, v3] for (x, v, v2, v3) in zip(x_axis, mc_data, sarsa_data, q_data)]
-    table = wandb.Table(
-        data=data,
-        columns=["x", "Monte-Carlo", "sarsa", "q learning"]
-    )
-    wandb.log({
-        log_name: table,
-    })
+def _plot_metrics(arg_dict:dict, _len:int):
+    # reward_0_1, reward_0_2, reward_0_3, reward_0_4,
+    # loss_0_1, loss_0_2, loss_0_3, loss_0_4):
+    wandb.init()
 
-    
+    for m in arg_dict.keys():
+        wandb.define_metric(m)
+
+    for i in range(_len):
+        log_dict = {}
+        for m in arg_dict.keys():
+            log_dict[m] = arg_dict[m][i]
+        
+        wandb.log(log_dict)
+    wandb.finish()
+
+
 if __name__ == '__main__':
-    # task1()
+    task1()
     # task2()
-    for csv_filename in os.listdir("log_csv"):
-        read_data(os.path.join("log_csv", csv_filename), n=N_SMOOTHING, log_name=csv_filename[:-4])
+
