@@ -282,7 +282,6 @@ class MonteCarloPolicyIteration(ModelFreeControl):
     def policy_improvement(self) -> None:
         """Improve policy based on Q(s,a) after one episode"""
         # TODO: Improve the policy
-
         argmax_a = np.argmax(self.q_values, axis=1)
 
         # policy(s, a) = epsilon / m + 1 - epsilon, if a optimal
