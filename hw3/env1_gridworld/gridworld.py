@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import gymnasium as gym
@@ -98,7 +97,7 @@ class GridWorld:
         self._state_list = []
         self._current_state = 0
         self.max_step = max_step
-        self.maze_name = os.path.split(maze_file)[1].replace(".txt", "").capitalize()
+        self.maze_name = maze_file.split('/')[-1].replace(".txt", "").capitalize()
         self._read_maze(maze_file)
         self.render_init(self.maze_name)
 

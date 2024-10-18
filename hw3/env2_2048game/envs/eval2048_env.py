@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 import itertools
 import logging
 from six import StringIO
-import sys
+
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -135,8 +135,8 @@ class Eval2048Env(gym.Env):
 
         return stack(self.Matrix), {}
 
-    def render(self, mode='human'):
-        outfile = StringIO() if mode == 'ansi' else sys.stdout
+    def render(self, mode='ansi'):
+        outfile = StringIO() if mode == 'ansi' else None
         s = 'Score: {}\n'.format(self.score)
         s += 'Highest: {}\n'.format(self.highest())
         npa = np.array(self.Matrix)

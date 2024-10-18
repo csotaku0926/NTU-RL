@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import json
+import time
 
 from algorithms import (
     MonteCarloPrediction,
@@ -208,16 +209,36 @@ def run_Q_Learning(grid_world: GridWorld, iter_num: int):
     grid_world.reset()
     print()
 
+# time testing
+def time_prediction(func, grid_world, seed, name="prediction"):
+    start = time.time()
+    func(grid_world=grid_world, seed=seed)
+    end = time.time()
+    print(f"{name} elapse time:", end - start)
+
+def time_control(func, grid_world, iter_num, name="control"):
+    start = time.time()
+    func(grid_world=grid_world, iter_num=iter_num)
+    end = time.time()
+    print(f"{name} elapse time:", end - start)
+
 if __name__ == "__main__":
     seed = 1
-    grid_world = init_grid_world("maze.txt",INIT_POS)
+    grid_world = init_grid_world("maze2.txt",INIT_POS)
+    print("state space:", grid_world.get_state_space())
     # 2-1
-    run_MC_prediction(grid_world,seed)
-    run_TD_prediction(grid_world,seed)
-    run_NstepTD_prediction(grid_world,seed)
+    # run_MC_prediction(grid_world,seed)
+    time_prediction(run_MC_prediction, grid_world, seed, "MC prediction")
+    # run_TD_prediction(grid_world,seed)
+    time_prediction(run_TD_prediction, grid_world, seed, "TD prediction")
+    # run_NstepTD_prediction(grid_world,seed)
+    time_prediction(run_NstepTD_prediction, grid_world, seed, "N-step prediction")
 
     # 2-2
-    grid_world = init_grid_world("maze.txt")
-    run_MC_policy_iteration(grid_world, 512000)
-    run_SARSA(grid_world, 512000)
-    run_Q_Learning(grid_world, 50000)
+    grid_world = init_grid_world("maze2.txt")
+    # run_MC_policy_iteration(grid_world, 512000)
+    time_control(run_MC_policy_iteration, grid_world, 512000, "MC policy iter")
+    # run_SARSA(grid_world, 512000)
+    time_control(run_SARSA, grid_world, 512000, "SARSA")
+    # run_Q_Learning(grid_world, 50000)
+    time_control(run_Q_Learning, grid_world, 50000, "Q learning")

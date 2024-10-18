@@ -32,7 +32,7 @@ my_config = {
 
 
 def make_env():
-    env = gym.make('2048-v0')
+    env = gym.make('2048-v0', render_mode="ansi")
     return env
 
 def eval(env, model, eval_episode_num):
