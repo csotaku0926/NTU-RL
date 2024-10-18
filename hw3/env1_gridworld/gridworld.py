@@ -439,7 +439,32 @@ class GridWorld:
             tuple: next_state, reward, done, truncation
         """
         # TODO implement the step function here
-        raise NotImplementedError
+        self._step_count += 1
+
+        current_state_position = self._state_list[self._current_state]
+        # terminate conditions
+        if (self._is_goal_state(current_state_position)):
+            next_init_state = self.reset()
+            return next_init_state, self._goal_reward, True, False
+        
+        if (self._is_trap_state(current_state_position)):
+            next_init_state = self.reset()
+            return next_init_state, self._trap_reward, True, False
+        
+        if (self._is_exit_state(current_state_position)):
+            next_init_state = self.reset()
+            return next_init_state, self._exit_reward, True, False
+        
+        # if exceed max step
+        if (self._step_count >= self.max_step):
+            next_init_state = self.reset()
+            return next_init_state, self._step_reward, False, True
+
+        next_state_position = self._get_next_state(current_state_position, action)
+        next_state = self._state_list.index(next_state_position)
+        self._current_state = next_state
+        
+        return next_state, self._step_reward, False, False
 
     def reset(self) -> int:
         """Reset the environment
