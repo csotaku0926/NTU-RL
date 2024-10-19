@@ -101,9 +101,15 @@ class GridWorld:
         self._read_maze(maze_file)
         self.render_init(self.maze_name)
 
+        # door is opened or not (need to extend states if so)
+        self.door_is_open = False
+
         # if min_y is None you can initialize the agent in any state
         # if min_y is not None, you can initialize the agent in the state left to min_y
         min_y = None
+
+        # set seed for initialization purpose
+        np.random.seed(1392102)
 
         # lava init
         lava_states = []
@@ -440,7 +446,11 @@ class GridWorld:
         # TODO implement the step function here
         self._step_count += 1
 
-        current_state_position = self._state_list[self._current_state]
+        current_state = self._current_state 
+        if (self.door_is_open):
+            current_state -= len(self._state_list)
+
+        current_state_position = self._state_list[current_state]
         # terminate conditions
         if (self._is_goal_state(current_state_position)):
             next_init_state = self.reset()
@@ -457,13 +467,32 @@ class GridWorld:
         # if exceed max step
         if (self._step_count >= self.max_step):
             next_init_state = self.reset()
-            return next_init_state, self._step_reward, False, True
+            return next_init_state, self.step_reward, False, True
 
+        # enter the states get step rewards
         next_state_position = self._get_next_state(current_state_position, action)
         next_state = self._state_list.index(next_state_position)
         self._current_state = next_state
+        if (self.door_is_open):
+            next_state += len(self._state_list)
         
-        return next_state, self._step_reward, False, False
+        # if enter key state, open the door
+        if (self._is_key_state(next_state_position)):
+            self.open_door()
+            self.door_is_open = True
+        
+        # if enter bait state, bite the bait
+        elif (self._is_bait_state(next_state_position)):
+            self.bite()
+            return next_state, self._bait_reward, False, False
+
+        # if enter lava state, terminate with step reward
+        elif (self._is_lava_state(next_state_position)):
+            next_init_state = self.reset()
+            return next_init_state, self.step_reward, True, False
+
+        # normal step return
+        return next_state, self.step_reward, False, False
 
     def reset(self) -> int:
         """Reset the environment
@@ -472,7 +501,18 @@ class GridWorld:
             int: initial state
         """
         # TODO implement the reset function here
-        raise NotImplementedError
+        self._step_count = 0
+
+        # set up special states
+        self.close_door()
+        self.place_bait()
+        self.door_is_open = False
+
+        # make sure init y < self.min_y (left to lava)
+        init_idx = np.random.randint(len(self._init_states))
+        self._current_state = self._init_states[init_idx]
+
+        return self._current_state
 
     #############################
     # Visualize the environment #
