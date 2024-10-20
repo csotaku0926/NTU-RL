@@ -9,6 +9,15 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
+# log to wandb
+DO_WANDB = True
+RUN_ID = "run_dynamic_penalty"
+
+# record past best episodes
+DO_RECORD = True
+_boards = []
+_actions = []
+_actions_str = ["Up", "Right", "Down", "Left"]
 
 warnings.filterwarnings("ignore")
 register(
@@ -18,13 +27,12 @@ register(
 
 # Set hyper params (configurations) for training
 my_config = {
-    "run_id": "example",
-
+    "run_id": RUN_ID,
     "algorithm": PPO,
     "policy_network": "MlpPolicy",
     "save_path": "models/sample_model",
 
-    "epoch_num": 5,
+    "epoch_num": 10000,
     "timesteps_per_epoch": 1000,
     "eval_episode_num": 10,
     "learning_rate": 1e-4,
@@ -39,6 +47,7 @@ def eval(env, model, eval_episode_num):
     """Evaluate the model and return avg_score and avg_highest"""
     avg_score = 0
     avg_highest = 0
+
     for seed in range(eval_episode_num):
         done = False
         # Set seed using old Gym API
@@ -49,14 +58,29 @@ def eval(env, model, eval_episode_num):
         while not done:
             action, _state = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
+            _boards.append(info[0]['board'])
+            _actions.append(int(action))
         
         avg_highest += info[0]['highest']
         avg_score   += info[0]['score']
 
+        _boards.append("\n-----\n")
+        _actions.append("")
+
     avg_highest /= eval_episode_num
     avg_score /= eval_episode_num
-        
+
     return avg_score, avg_highest
+
+
+def record_boards(boards: list, actions: list):
+    """ simply write printed history boards into txt file """
+    with open("record_boards.txt", "w") as f:
+        for board, a in zip(boards, actions):
+            print(board, file=f)
+            if (isinstance(a, int)):
+                print(_actions_str[a], file=f)
+            print(file=f)
 
 def train(eval_env, model, config):
     """Train agent using SB3 algorithm and my_config"""
@@ -64,48 +88,60 @@ def train(eval_env, model, config):
     for epoch in range(config["epoch_num"]):
 
         # Uncomment to enable wandb logging
+        callback = None
+        if (DO_WANDB):
+            callback = WandbCallback(
+                            gradient_save_freq=100,
+                            verbose=2,
+                        )
+
         model.learn(
             total_timesteps=config["timesteps_per_epoch"],
-            reset_num_timesteps=False,
-            # callback=WandbCallback(
-            #     gradient_save_freq=100,
-            #     verbose=2,
-            # ),
+            reset_num_timesteps=False, 
+            callback=callback,
         )
+        
 
         ### Evaluation
-        # print(config["run_id"])
-        # print("Epoch: ", epoch)
+        print(config["run_id"])
+        print("Epoch: ", epoch)
         avg_score, avg_highest = eval(eval_env, model, config["eval_episode_num"])
         
-        # print("Avg_score:  ", avg_score)
-        # print("Avg_highest:", avg_highest)
-        # print()
-        # wandb.log(
-        #     {"avg_highest": avg_highest,
-        #      "avg_score": avg_score}
-        # )
-        
+        print("Avg_score:  ", avg_score)
+        print("Avg_highest:", avg_highest)
+        print()
+        if (DO_WANDB):
+            wandb.log(
+                {"avg_highest": avg_highest,
+                "avg_score": avg_score}
+            )
+            
 
         ### Save best model
         if current_best < avg_score:
             print("Saving Model")
             current_best = avg_score
             save_path = config["save_path"]
-            # model.save(f"{save_path}/{epoch}")
+            model.save(f"{save_path}/{epoch}")
 
-        # print("---------------")
+            if (DO_RECORD):
+                record_boards(_boards, _actions)
+        _boards.clear()
+        _actions.clear()
+
+        print("---------------")
 
 
 if __name__ == "__main__":
 
     # Create wandb session (Uncomment to enable wandb logging)
-    # run = wandb.init(
-    #     project="assignment_3",
-    #     config=my_config,
-    #     sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-    #     id=my_config["run_id"]
-    # )
+    if (DO_WANDB):
+        run = wandb.init(
+            project="assignment_3",
+            config=my_config,
+            sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+            id=my_config["run_id"]
+        )
 
     # Create training environment 
     num_train_envs = 2

@@ -39,19 +39,14 @@ def stack(flat, layers=16):
     layered = np.transpose(layered, (2,0,1))
     return layered
 
-# this is where the 
-# register(
-#     id='2048-v0',
-#     entry_point='envs:My2048Env'
-# )
-# refers to
+
 class My2048Env(gym.Env):
     metadata = {
         "render_modes": ['ansi', 'human', 'rgb_array'],
         "render_fps": 2,
     }
 
-    def __init__(self):
+    def __init__(self, render_mode: str):
         # Definitions for game. Board must be square.
         self.size = 4
         self.w = self.size
@@ -63,15 +58,23 @@ class My2048Env(gym.Env):
 
         # Foul counts for illegal moves
         self.foul_count = 0
+        # still has this many legal actions 
+        self.n_possible_action = 0
 
         # Members for gym implementation
-        self.action_space = spaces.Discrete(4)
+        self.n_action = 4
+        self.action_space = spaces.Discrete(self.n_action)
         # Suppose that the maximum tile is as if you have powers of 2 across the board.
         layers = self.squares
         self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
-        self.set_illegal_move_reward(0.)
+        # tolerance illegal move
+        self.max_illegal_tol = 3
+        self.pre_action = 0
+
+        self.illegal_init_reward = -2.0
+        self.set_illegal_move_reward(self.illegal_init_reward * self.n_action)
         
         self.set_max_tile(None)
 
@@ -84,6 +87,10 @@ class My2048Env(gym.Env):
         # Reset ready for a game
         self.reset()
 
+        # render stuff
+        self.render_mode = render_mode
+
+
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -94,7 +101,7 @@ class My2048Env(gym.Env):
         # Guess that the maximum reward is also 2**squares though you'll probably never get that.
         # (assume that illegal move reward is the lowest value that can be returned
         self.illegal_move_reward = reward
-        self.reward_range = (self.illegal_move_reward, float(2**self.squares))
+        self.reward_range = (self.illegal_move_reward, float(2 ** self.squares))
 
     def set_max_tile(self, max_tile):
         """Define the maximum tile that will end the game (e.g. 2048). None means no limit.
@@ -112,37 +119,50 @@ class My2048Env(gym.Env):
             'illegal_move': False,
             'highest': 0,
             'score': 0,
+            'board': None,
         }
         try:
             # assert info['illegal_move'] == False
             pre_state = self.Matrix.copy()
             score = float(self.move(action))
             self.score += score
-            assert score <= 2**(self.w*self.h)
+            assert score <= 2 ** (self.w * self.h)
+
+            # add a 2 or 4 tile, then check if can continue or not
             self.add_tile()
             done = self.isend()
             reward = float(score)
 
             # TODO: Add reward according to weighted states (optional)
-            weight = np.array([
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ],
-                    [0  , 0  , 0  , 0  ]])
-            reward += 0
+            # weight = np.array([
+            #         [1  , 0  , 0  , 1  ],
+            #         [0  , 0  , 0  , 0  ],
+            #         [0  , 0  , 0  , 0  ],
+            #         [1  , 0  , 0  , 1  ]])
+            # reward += np.dot(
+            #     weight.flatten(),
+            #     self.Matrix.flatten()
+            # )
             
         except IllegalMove:
             logging.debug("Illegal move")
             info['illegal_move'] = True
-            reward = self.illegal_move_reward
+
+            # penalize more if keeps predict the same action as before
+            self.isend()
+            reward = self.illegal_init_reward * self.n_possible_action
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
-            done = True
+            done = (self.foul_count >= self.max_illegal_tol)
+            self.foul_count += 1
 
         truncate = False
         info['highest'] = self.highest()
         info['score']   = self.score
+        info['board'] = self.Matrix # to record board
 
+        # record past action
+        self.pre_action = action
         # Return observation (board state), reward, done, truncate and info dict
         return stack(self.Matrix), reward, done, truncate, info
 
@@ -198,9 +218,13 @@ class My2048Env(gym.Env):
         return np.max(self.Matrix)
 
     def move(self, direction, trial=False):
-        """Perform one move of the game. Shift things to one side then,
+        """
+        Perform one move of the game. Shift things to one side then,
         combine. directions 0, 1, 2, 3 are up, right, down, left.
-        Returns the score that [would have] got."""
+        Returns the score that [would have] got.
+        - direction: action 
+        - trial: if false, the matrix will be changed according to action direction
+        """
         if not trial:
             if direction == 0:
                 logging.debug("Up")
@@ -260,6 +284,8 @@ class My2048Env(gym.Env):
                 skip = False
                 continue
             combined_row[output_index] = p[0]
+
+            # for each tile combined, get scores
             if p[0] == p[1]:
                 combined_row[output_index] += p[1]
                 move_score += p[0] + p[1]
@@ -297,6 +323,8 @@ class My2048Env(gym.Env):
         """Has the game ended. Game ends if there is a tile equal to the limit
            or there are no legal moves. If there are empty spaces then there
            must be legal moves."""
+        
+        self.n_possible_action = 0
 
         if self.max_tile is not None and self.highest() == self.max_tile:
             return True
@@ -304,6 +332,7 @@ class My2048Env(gym.Env):
         for direction in range(4):
             try:
                 self.move(direction, trial=True)
+                self.n_possible_action += 1
                 # Not the end if we can do any move
                 return False
             except IllegalMove:
