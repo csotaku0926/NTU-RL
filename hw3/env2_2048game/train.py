@@ -11,7 +11,7 @@ from stable_baselines3 import A2C, DQN, PPO, SAC
 
 # log to wandb
 DO_WANDB = True
-RUN_ID = "run_dynamic_penalty"
+RUN_ID = "run_dynamic_penalty_fixed"
 
 # record past best episodes
 DO_RECORD = True
@@ -32,7 +32,7 @@ my_config = {
     "policy_network": "MlpPolicy",
     "save_path": "models/sample_model",
 
-    "epoch_num": 10000,
+    "epoch_num": 20000,
     "timesteps_per_epoch": 1000,
     "eval_episode_num": 10,
     "learning_rate": 1e-4,
@@ -122,7 +122,7 @@ def train(eval_env, model, config):
             print("Saving Model")
             current_best = avg_score
             save_path = config["save_path"]
-            model.save(f"{save_path}/{epoch}")
+            model.save(f"{save_path}/best")
 
             if (DO_RECORD):
                 record_boards(_boards, _actions)

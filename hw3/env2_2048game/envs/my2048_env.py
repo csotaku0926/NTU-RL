@@ -149,7 +149,7 @@ class My2048Env(gym.Env):
             info['illegal_move'] = True
 
             # penalize more if keeps predict the same action as before
-            self.isend()
+            self.count_possible_action()
             reward = self.illegal_init_reward * self.n_possible_action
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
@@ -338,6 +338,16 @@ class My2048Env(gym.Env):
             except IllegalMove:
                 pass
         return True
+    
+    def count_possible_action(self):
+        self.n_possible_action = 0
+        for direction in range(4):
+            try:
+                self.move(direction, trial=True)
+                self.n_possible_action += 1
+            except IllegalMove:
+                pass
+        
 
     def get_board(self):
         """Retrieve the whole board, useful for testing."""
