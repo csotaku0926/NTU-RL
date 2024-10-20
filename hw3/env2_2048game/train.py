@@ -116,8 +116,8 @@ if __name__ == "__main__":
 
     # Create model from loaded config and train
     # Note: Set verbose to 0 if you don't want info messages
-    model = my_config["algorithm"](
-        my_config["policy_network"], 
+    model = my_config["algorithm"](  # PPO
+        my_config["policy_network"], # "MlpPolicy"
         train_env, 
         verbose=2,
         tensorboard_log=my_config["run_id"],

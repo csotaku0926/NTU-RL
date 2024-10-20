@@ -81,6 +81,23 @@ def test_correctness(filename: str = "tasks/maze.txt") -> None:
 
     print(f"The correctness of the task {task_name}: {np.round(np.mean(result) * 100, 2)} %")
 
+def custom_test(filename: str):
+    # Extract the task name from the filename
+    task_name = os.path.split(filename)[1].replace(".txt", "")
+    if "_" in task_name:
+        task_name = task_name.split('_')[0]
+    grid_world = GridWorld(
+        maze_file=filename,
+        step_reward=STEP_REWARD,
+        goal_reward=GOAL_REWARD,
+        trap_reward=TRAP_REWARD,
+        exit_reward=EXIT_REWARD,
+        bait_reward=BAIT_REWARD,
+        bait_step_penalty=BAIT_STEP_PENALTY,
+        max_step=MAX_STEP,
+    )
+
+    grid_world.visualize(filename="test1_v.png")
 
 def write_gif(filename: str = "lava.txt", algorithm: type = PPO) -> None:
     """Writes the trajectory of the task to a GIF file.
@@ -156,3 +173,5 @@ if __name__ == "__main__":
     # write_gif("tasks/door.txt", algorithm=A2C)
     # write_gif("tasks/portal.txt", algorithm=PPO)
     # write_gif("tasks/maze.txt", algorithm=PPO)
+
+    test_correctness("tasks/test1.txt")

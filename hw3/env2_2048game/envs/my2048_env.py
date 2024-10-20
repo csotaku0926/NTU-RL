@@ -39,6 +39,12 @@ def stack(flat, layers=16):
     layered = np.transpose(layered, (2,0,1))
     return layered
 
+# this is where the 
+# register(
+#     id='2048-v0',
+#     entry_point='envs:My2048Env'
+# )
+# refers to
 class My2048Env(gym.Env):
     metadata = {
         "render_modes": ['ansi', 'human', 'rgb_array'],
