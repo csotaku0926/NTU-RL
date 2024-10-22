@@ -69,12 +69,14 @@ class My2048Env(gym.Env):
         self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
+        self.set_illegal_move_reward(-8.0)
+        self.step_reward = -0.1
+
+        # replay state (for tolerating illegal moves)
+        self.pre_state = None
+
         # tolerance illegal move
         self.max_illegal_tol = 3
-        self.pre_action = 0
-
-        self.illegal_init_reward = -2.0
-        self.set_illegal_move_reward(self.illegal_init_reward * self.n_action)
         
         self.set_max_tile(None)
 
@@ -123,7 +125,11 @@ class My2048Env(gym.Env):
         }
         try:
             # assert info['illegal_move'] == False
-            pre_state = self.Matrix.copy()
+            # pre_prestate = None
+            # if (self.pre_state is not None):
+            #     pre_prestate = self.pre_state.copy()
+
+            self.pre_state = self.Matrix.copy()
             score = float(self.move(action))
             self.score += score
             assert score <= 2 ** (self.w * self.h)
@@ -134,35 +140,36 @@ class My2048Env(gym.Env):
             reward = float(score)
 
             # TODO: Add reward according to weighted states (optional)
+            # add step reward, make each step costy
+            reward += self.step_reward
+
+            # M = self.Matrix.flatten()
+            # corner_reward = 1.0 / float(np.max(M))
             # weight = np.array([
-            #         [1  , 0  , 0  , 1  ],
+            #         [corner_reward  , 0  , 0  , corner_reward  ],
             #         [0  , 0  , 0  , 0  ],
             #         [0  , 0  , 0  , 0  ],
-            #         [1  , 0  , 0  , 1  ]])
-            # reward += np.dot(
-            #     weight.flatten(),
-            #     self.Matrix.flatten()
-            # )
+            #         [corner_reward  , 0  , 0  , corner_reward  ]])
+            # reward += np.dot(weight.flatten(), M)
             
         except IllegalMove:
             logging.debug("Illegal move")
             info['illegal_move'] = True
 
             # penalize more if keeps predict the same action as before
-            self.count_possible_action()
-            reward = self.illegal_init_reward * self.n_possible_action
+            reward = self.illegal_move_reward
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
-            done = (self.foul_count >= self.max_illegal_tol)
-            self.foul_count += 1
+            done = True #(self.foul_count >= self.max_illegal_tol)
+            # if (pre_prestate is not None):
+            #     self.Matrix = pre_prestate
+            # self.foul_count += 1
 
         truncate = False
         info['highest'] = self.highest()
         info['score']   = self.score
         info['board'] = self.Matrix # to record board
 
-        # record past action
-        self.pre_action = action
         # Return observation (board state), reward, done, truncate and info dict
         return stack(self.Matrix), reward, done, truncate, info
 
@@ -171,6 +178,7 @@ class My2048Env(gym.Env):
         self.Matrix = np.zeros((self.h, self.w), int)
         self.score = 0
         self.foul_count = 0
+        self.pre_state = None
 
         logging.debug("Adding tiles")
         self.add_tile()
@@ -339,14 +347,14 @@ class My2048Env(gym.Env):
                 pass
         return True
     
-    def count_possible_action(self):
-        self.n_possible_action = 0
-        for direction in range(4):
-            try:
-                self.move(direction, trial=True)
-                self.n_possible_action += 1
-            except IllegalMove:
-                pass
+    # def count_possible_action(self):
+    #     self.n_possible_action = 0
+    #     for direction in range(4):
+    #         try:
+    #             self.move(direction, trial=True)
+    #             self.n_possible_action += 1
+    #         except IllegalMove:
+    #             pass
         
 
     def get_board(self):

@@ -10,14 +10,17 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3 import A2C, DQN, PPO, SAC
 
 # log to wandb
-DO_WANDB = True
-RUN_ID = "run_dynamic_penalty_fixed"
+DO_WANDB = False
+RUN_ID = "run_zero_tol_PPO"
 
 # record past best episodes
 DO_RECORD = True
 _boards = []
 _actions = []
 _actions_str = ["Up", "Right", "Down", "Left"]
+
+LOAD_BEST = True
+LOAD_WHAT = "models/sample_model/best_1926_PPO.zip"
 
 warnings.filterwarnings("ignore")
 register(
@@ -34,8 +37,8 @@ my_config = {
 
     "epoch_num": 20000,
     "timesteps_per_epoch": 1000,
-    "eval_episode_num": 10,
-    "learning_rate": 1e-4,
+    "eval_episode_num": 20,
+    "learning_rate": 1e-4, # try 5e-4, 1e-4, 5e-5
 }
 
 
@@ -75,7 +78,7 @@ def eval(env, model, eval_episode_num):
 
 def record_boards(boards: list, actions: list):
     """ simply write printed history boards into txt file """
-    with open("record_boards.txt", "w") as f:
+    with open(f"record_boards_{RUN_ID}.txt", "w") as f:
         for board, a in zip(boards, actions):
             print(board, file=f)
             if (isinstance(a, int)):
@@ -122,7 +125,8 @@ def train(eval_env, model, config):
             print("Saving Model")
             current_best = avg_score
             save_path = config["save_path"]
-            model.save(f"{save_path}/best")
+            alg_name = type(model).__name__
+            model.save(f"{save_path}/best_{int(current_best)}_{alg_name}")
 
             if (DO_RECORD):
                 record_boards(_boards, _actions)
@@ -159,5 +163,9 @@ if __name__ == "__main__":
         tensorboard_log=my_config["run_id"],
         learning_rate=my_config["learning_rate"],
     )
+
+    alg_name = type(model).__name__
+    if (LOAD_BEST and alg_name == "PPO"):
+        model = PPO.load(LOAD_WHAT, train_env)
 
     train(eval_env, model, my_config)

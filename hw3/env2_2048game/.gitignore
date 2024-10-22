@@ -1,3 +1,4 @@
 wandb/
 run_*/
 envs/__pycache__
+models/
