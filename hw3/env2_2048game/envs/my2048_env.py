@@ -125,9 +125,6 @@ class My2048Env(gym.Env):
         }
         try:
             # assert info['illegal_move'] == False
-            # pre_prestate = None
-            # if (self.pre_state is not None):
-            #     pre_prestate = self.pre_state.copy()
 
             self.pre_state = self.Matrix.copy()
             score = float(self.move(action))
@@ -160,15 +157,16 @@ class My2048Env(gym.Env):
             reward = self.illegal_move_reward
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
-            done = True #(self.foul_count >= self.max_illegal_tol)
-            # if (pre_prestate is not None):
-            #     self.Matrix = pre_prestate
-            # self.foul_count += 1
+            done = (self.foul_count >= self.max_illegal_tol)
+            self.foul_count += 1
 
         truncate = False
         info['highest'] = self.highest()
         info['score']   = self.score
         info['board'] = self.Matrix # to record board
+
+        # prevent gradient explosion
+        # reward = np.log(reward + 1 - self.illegal_move_reward) / self.squares
 
         # Return observation (board state), reward, done, truncate and info dict
         return stack(self.Matrix), reward, done, truncate, info
@@ -346,15 +344,6 @@ class My2048Env(gym.Env):
             except IllegalMove:
                 pass
         return True
-    
-    # def count_possible_action(self):
-    #     self.n_possible_action = 0
-    #     for direction in range(4):
-    #         try:
-    #             self.move(direction, trial=True)
-    #             self.n_possible_action += 1
-    #         except IllegalMove:
-    #             pass
         
 
     def get_board(self):

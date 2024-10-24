@@ -11,7 +11,7 @@ from stable_baselines3 import A2C, DQN, PPO, SAC
 
 # log to wandb
 DO_WANDB = False
-RUN_ID = "run_zero_tol_PPO"
+RUN_ID = "run_3_tol_DQN"
 
 # record past best episodes
 DO_RECORD = True
@@ -20,7 +20,7 @@ _actions = []
 _actions_str = ["Up", "Right", "Down", "Left"]
 
 LOAD_BEST = True
-LOAD_WHAT = "models/sample_model/best_1926_PPO.zip"
+LOAD_WHAT = "models/sample_model/best_2871_512_DQN"
 
 warnings.filterwarnings("ignore")
 register(
@@ -31,14 +31,14 @@ register(
 # Set hyper params (configurations) for training
 my_config = {
     "run_id": RUN_ID,
-    "algorithm": PPO,
+    "algorithm": DQN,
     "policy_network": "MlpPolicy",
     "save_path": "models/sample_model",
 
     "epoch_num": 20000,
     "timesteps_per_epoch": 1000,
     "eval_episode_num": 20,
-    "learning_rate": 1e-4, # try 5e-4, 1e-4, 5e-5
+    "learning_rate": 5e-5, # try 5e-4, 1e-4, 5e-5
 }
 
 
@@ -165,7 +165,12 @@ if __name__ == "__main__":
     )
 
     alg_name = type(model).__name__
-    if (LOAD_BEST and alg_name == "PPO"):
+    if (LOAD_BEST and alg_name == "DQN"):
+        custom_obj = {'learning_rate': my_config["learning_rate"]}
+        model = DQN.load(LOAD_WHAT, train_env, custom_objects=custom_obj)
+
+    elif (LOAD_BEST and alg_name == "PPO"):
         model = PPO.load(LOAD_WHAT, train_env)
+
 
     train(eval_env, model, my_config)
