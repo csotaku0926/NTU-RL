@@ -50,13 +50,13 @@ def evaluation(env, model, render_last, eval_num=100):
 
 
 if __name__ == "__main__":
-    model_path = "models/sample_model/best_1926_PPO"  # Change path name to load different models
+    model_path = "models/sample_model/best_3430_DQN"  # Change path name to load different models (3430 -> 512: 16)
     env = gym.make('2048-eval')
 
     ### Load model with SB3
     # Note: Model can be loaded with arbitrary algorithm class for evaluation
     # (You don't necessarily need to use PPO for training)
-    model = PPO.load(model_path)
+    model = DQN.load(model_path)
     
     eval_num = 100
     score, highest = evaluation(env, model, True, eval_num)

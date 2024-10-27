@@ -1,5 +1,5 @@
-import numpy as np
+import torch
 
-a = np.array([[1,2], [3,4]]).flatten()
+a = torch.arange(8)
 
-print(np.max(a))
+print(torch.reshape(a, (2, -1)).shape)
