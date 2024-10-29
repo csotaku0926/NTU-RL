@@ -17,7 +17,7 @@ import torch.nn as nn
 
 # log to wandb
 DO_WANDB = False
-RUN_ID = "run_2layers_CNN_DQN"
+RUN_ID = "run_logrew_CNN_DQN"
 
 # record past best episodes
 DO_RECORD = True
@@ -26,7 +26,7 @@ _actions = []
 _actions_str = ["Up", "Right", "Down", "Left"]
 
 LOAD_BEST = True
-LOAD_WHAT = "models/sample_model/best_3430_DQN"
+LOAD_WHAT = "models/sample_model/best_4315_DQN"
 
 warnings.filterwarnings("ignore")
 register(
@@ -139,16 +139,15 @@ my_config = {
     "save_path": "models/sample_model",
 
     "epoch_num": 20000,
-    "timesteps_per_epoch": 5_000, 
+    "timesteps_per_epoch": 1000, 
     "eval_episode_num": 20,
-    "learning_rate": linear_schedule(5e-4), # try 5e-4, 1e-4, 5e-5
+    "learning_rate": 3e-4, #linear_schedule(5e-4), # try 5e-4, 1e-4, 5e-5
     "policy_kwargs": POLICY_KWARGS,
     "device": 'auto', # use cuda if possible, else cpu
 
     # DQN only
-    "exploration_fraction": 0.1,
     "gamma": 0.9,
-    "batch_size": 512,
+    "batch_size": 128, # tried 512
     "buffer_size": 6000,
 }
 
@@ -278,7 +277,6 @@ if __name__ == "__main__":
         device=my_config["device"],
         
         # DQN only
-        exploration_fraction=my_config["exploration_fraction"],
         gamma=my_config["gamma"],
         batch_size=my_config["batch_size"],
         buffer_size=my_config["buffer_size"],

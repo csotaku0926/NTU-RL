@@ -5,6 +5,8 @@ from stable_baselines3 import A2C, PPO, DQN
 import numpy as np
 from collections import Counter
 
+import matplotlib.pyplot as plt
+
 register(
     id='2048-eval',
     entry_point='envs:Eval2048Env'
@@ -48,9 +50,11 @@ def evaluation(env, model, render_last, eval_num=100):
         
     return score, highest
 
+def plot_bar():
+    pass
 
 if __name__ == "__main__":
-    model_path = "models/sample_model/best_3969_1024_DQN"  # Change path name to load different models (4315 -> 512: 33)
+    model_path = "models/sample_model/best_4139_1024!_DQN"  # Change path name to load different models (4315 -> 512: 33)
     env = gym.make('2048-eval')
 
     ### Load model with SB3
@@ -69,3 +73,5 @@ if __name__ == "__main__":
     c = Counter(highest)
     for item in (sorted(c.items(),key = lambda i: i[0])):
         print(f"{item[0]}: {item[1]}")
+
+    # plot

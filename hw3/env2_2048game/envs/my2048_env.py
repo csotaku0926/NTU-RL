@@ -69,8 +69,8 @@ class My2048Env(gym.Env):
         self.observation_space = spaces.Box(0, 1, (layers, self.w, self.h), dtype=int)
         
         # TODO: Set negative reward (penalty) for illegal moves (optional)
-        self.set_illegal_move_reward(-8.0)
-        self.step_reward = -0.1
+        self.set_illegal_move_reward(-32.0)
+        self.step_reward = 0.0
 
         # replay state (for tolerating illegal moves)
         self.pre_state = None
@@ -125,7 +125,6 @@ class My2048Env(gym.Env):
         }
         try:
             # assert info['illegal_move'] == False
-
             self.pre_state = self.Matrix.copy()
             score = float(self.move(action))
             self.score += score
@@ -140,14 +139,19 @@ class My2048Env(gym.Env):
             # add step reward, make each step costy
             reward += self.step_reward
 
+            # added
+            pre_n_tiles = (self.pre_state.flatten() != 0).sum()
+            cur_n_tiles = (self.Matrix.flatten() != 0).sum()
+            reward += (pre_n_tiles - cur_n_tiles)
+
             # M = self.Matrix.flatten()
-            # corner_reward = 1.0 / float(np.max(M))
+            # corner_reward = 0.1 
             # weight = np.array([
             #         [corner_reward  , 0  , 0  , corner_reward  ],
             #         [0  , 0  , 0  , 0  ],
             #         [0  , 0  , 0  , 0  ],
             #         [corner_reward  , 0  , 0  , corner_reward  ]])
-            # reward += np.dot(weight.flatten(), M)
+            # reward += np.dot(weight.flatten(), M == M.max())
             
         except IllegalMove:
             logging.debug("Illegal move")
@@ -157,8 +161,7 @@ class My2048Env(gym.Env):
             reward = self.illegal_move_reward
 
             # TODO: Modify this part for the agent to have a chance to explore other actions (optional)
-            done = (self.foul_count >= self.max_illegal_tol)
-            self.foul_count += 1
+            done = True
 
         truncate = False
         info['highest'] = self.highest()
@@ -166,7 +169,8 @@ class My2048Env(gym.Env):
         info['board'] = self.Matrix # to record board
 
         # prevent gradient explosion
-        # reward = np.log(reward + 1 - self.illegal_move_reward) / self.squares
+        if (reward > 0):
+            reward = np.log(reward + 1) 
 
         # Return observation (board state), reward, done, truncate and info dict
         return stack(self.Matrix), reward, done, truncate, info
